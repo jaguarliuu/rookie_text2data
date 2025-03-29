@@ -43,7 +43,7 @@ def get_db_schema(
         'mysql': f"SELECT COLUMN_COMMENT FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = '{database}' AND TABLE_NAME = :table_name AND COLUMN_NAME = :column_name",
         'oracle': "SELECT COMMENTS FROM ALL_COL_COMMENTS WHERE TABLE_NAME = :table_name AND COLUMN_NAME = :column_name",
         'sqlserver': "SELECT CAST(ep.value AS NVARCHAR(MAX)) FROM sys.columns c LEFT JOIN sys.extended_properties ep ON ep.major_id = c.object_id AND ep.minor_id = c.column_id WHERE OBJECT_NAME(c.object_id) = :table_name AND c.name = :column_name",
-        'postgresql': "SELECT col_description(:table_name::regclass, ordinal_position) FROM information_schema.columns WHERE table_name = :table_name AND column_name = :column_name"
+        'postgresql': "SELECT col_description((SELECT oid from pg_class where relname=:table_name), ordinal_position) FROM information_schema.columns WHERE table_name = :table_name AND column_name = :column_name"
     }.get(db_type.lower(), "")
 
     try:
