@@ -4,11 +4,8 @@ from typing import Any
 from dify_plugin import Tool
 from dify_plugin.entities.tool import ToolInvokeMessage
 from dify_plugin.entities.model.llm import LLMModelConfig
-from dify_plugin.entities.tool import ToolInvokeMessage
 from dify_plugin.entities.model.message import SystemPromptMessage, UserPromptMessage
 from utils.prompt_loader import PromptLoader
-# from utils.alchemy_db_client import format_schema_dsl
-# from utils.alchemy_db_client import get_db_schema
 from database_schema.connector import get_db_schema
 from database_schema.formatter import format_schema_dsl
 

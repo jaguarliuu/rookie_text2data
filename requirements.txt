@@ -1,5 +1,5 @@
 # 核心依赖
-dify_plugin~=0.0.1b67
+dify_plugin~=0.0.1b72
 sqlalchemy>=2.0.0
 
 # 数据库驱动
@@ -9,6 +9,11 @@ psycopg2-binary>=2.9.10  # PostgreSQL驱动
 
 # 安全相关
 cryptography==42.0.8
+
+# vanna
+chromadb==0.6.3
+openai==1.74.0
+vanna==0.7.9
 
 # 已弃用的驱动 (可选保留)
 # pymssql>=2.2.7     # 旧版SQL Server驱动(新代码不再使用)

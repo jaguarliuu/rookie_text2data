@@ -13,6 +13,7 @@ identity:
 tools:
   - tools/rookie_text2data.yaml
   - tools/rookie_excute_sql.yaml
+  - tools/rookie_vanna.yaml
 extra:
   python:
     source: provider/rookie_text2data.py

@@ -1,0 +1,50 @@
+identity:
+  name: rookie_vanna
+  author: jaguarliuu
+  label:
+    en_US: rookie_vanna
+    zh_Hans: rookie_vanna
+    pt_BR: rookie_vanna
+description:
+  human:
+    en_US: Fetching data from the database using natural language.
+    zh_Hans: 使用自然语言从MySQL获取数据(Vanna)
+    pt_BR: Fetching data from the database using natural language.
+  llm: Fetching data from the database using natural language.
+parameters:
+  - name: db_type
+    type: select
+    required: true
+    form: form
+    label:
+      en_US: Database type
+      zh_Hans: 数据库类型
+      pt_BR: Database type
+    human_description:
+      en_US: Database type
+      zh_Hans: 数据库类型
+      pt_BR: Database type
+    llm_description: Database type
+    options:
+      - label:
+          en_US: MySQL
+        value: mysql
+      - label:
+          en_US: PostgreSQL
+        value: postgresql
+  - name: query
+    type: string
+    required: true
+    label:
+      en_US: Query string
+      zh_Hans: 查询语句
+      pt_BR: Query string
+    human_description:
+      en_US: Fetching data from the database using natural language.
+      zh_Hans: Fetching data from the database using natural language.
+      pt_BR: Fetching data from the database using natural language.
+    llm_description: Fetching data from the database using natural language.
+    form: llm
+extra:
+  python:
+    source: tools/rookie_vanna.py
