@@ -35,6 +35,9 @@ parameters:
       - label:
           en_US: SQL Server
         value: sqlserver
+      - label:
+          en_US: Oracle
+        value: oracle
   - name: host
     type: string
     required: true
