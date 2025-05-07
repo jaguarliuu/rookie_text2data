@@ -2,7 +2,8 @@
 from database_schema.inspectors import (
     MySQLInspector,
     SQLServerInspector,
-    PostgreSQLInspector
+    PostgreSQLInspector,
+    OracleInspector
 )
 
 class InspectorFactory:
@@ -13,7 +14,8 @@ class InspectorFactory:
         mapping = {
             'mysql': MySQLInspector,
             'sqlserver': SQLServerInspector,
-            'postgresql': PostgreSQLInspector
+            'postgresql': PostgreSQLInspector,
+            'oracle': OracleInspector
         }
         
         if db_type not in mapping:

@@ -1,0 +1,49 @@
+{# Oracle专用模板 #}
+{% extends "base_prompt.jinja" %}
+
+{% block optimization_rules %}
+1. 索引优化策略：
+   - 优先创建复合索引覆盖WHERE+SELECT字段
+   - 对高频查询字段建立函数索引
+   - 大数据量表使用位图索引
+2. 查询优化规范：
+   - 使用绑定变量避免硬解析
+   - 分区表查询必须指定分区键
+   - 关联查询驱动表记录量需最小
+3. 执行计划控制：
+   - 强制走索引使用/*+ INDEX(table_name index_name) */
+   - 避免全表扫描的FILTER操作
+4. 特殊语法要求：
+   - 时间范围使用TO_DATE()显式转换
+   - 分页查询使用ROWNUM伪列
+{% endblock %}
+
+{% block validation_rules %}
+1. 统计信息验证：
+   - 自动检查LAST_ANALYZED时间，超过7天提示更新
+2. 执行计划验证：
+   - 通过DBMS_XPLAN检查ACCESS_PREDICATES
+   - 确保INDEX RANGE SCAN优于TABLE ACCESS FULL
+3. 性能基线检查：
+   - WHERE条件字段必须有统计直方图
+   - 多表关联必须存在连接条件索引
+{% endblock %}
+
+{% block example_section %}
+## 输出示例：
+SELECT /*+ INDEX(emp emp_dept_idx) */ 
+    e.employee_id AS "工号",
+    (e.salary * 1.1) AS "调整薪资",
+    TO_CHAR(e.hire_date, 'YYYY-MM-DD') AS "入职日期"
+FROM 
+    employees e
+INNER JOIN 
+    departments d ON e.department_id = d.department_id  
+WHERE 
+    e.job_id = 'IT_PROG'
+    AND d.location_id IN (1700, 1800)
+    AND e.hire_date BETWEEN TO_DATE('2020-01-01', 'YYYY-MM-DD') AND SYSDATE
+ORDER BY 
+    e.hire_date DESC
+FETCH FIRST 100 ROWS ONLY;
+{% endblock %}
