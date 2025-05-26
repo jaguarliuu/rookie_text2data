@@ -15,7 +15,7 @@ parameters:
   - name: db_type
     type: select
     required: true
-    form: form
+    form: llm
     label:
       en_US: Database type
       zh_Hans: 数据库类型
@@ -41,7 +41,7 @@ parameters:
   - name: host
     type: string
     required: true
-    form: form
+    form: llm
     label:
       en_US: Database ip/host
       zh_Hans: 数据库IP/域名
@@ -54,7 +54,7 @@ parameters:
   - name: port
     type: number
     required: true
-    form: form
+    form: llm
     min: 1
     max: 65535
     label:
@@ -69,7 +69,7 @@ parameters:
   - name: db_name
     type: string
     required: true
-    form: form
+    form: llm
     label:
       en_US: Database name
       zh_Hans: 数据库名称
@@ -82,7 +82,7 @@ parameters:
   - name: username
     type: string
     required: true
-    form: form
+    form: llm
     label:
       en_US: Username
       zh_Hans: 用户名
@@ -95,7 +95,7 @@ parameters:
   - name: password
     type: secret-input
     required: true
-    form: form
+    form: llm
     label:
       en_US: Password
       zh_Hans: 密码
@@ -143,7 +143,7 @@ parameters:
       zh_Hans: 返回数据格式
       pt_BR: result_format
     llm_description: result_format
-    form: form
+    form: llm
     default: json
     options:
       - label:

@@ -15,7 +15,7 @@ parameters:
   - name: db_type
     type: select
     required: true
-    form: form
+    form: llm
     label:
       en_US: Database type
       zh_Hans: 数据库类型
@@ -52,7 +52,7 @@ parameters:
       zh_Hans: SQL返回数据量限制
       pt_BR: limit
     llm_description: limit
-    form: form
+    form: llm
   - name: result_format
     type: select
     required: false
@@ -65,7 +65,7 @@ parameters:
       zh_Hans: 返回数据格式
       pt_BR: result_format
     llm_description: result_format
-    form: form
+    form: llm
     default: json
     options:
       - label:
