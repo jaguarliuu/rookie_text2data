@@ -1,111 +1,24 @@
-from typing import Any
+from typing import Any, Dict, Optional, Union
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.exc import SQLAlchemyError
 from urllib.parse import quote_plus # 用于对URL进行编码
-from typing import Any, Optional, Union
+import atexit
+import logging
+import time
 
-#def get_db_schema(
-#        db_type: str,
-#        host: str,
-#        port: int,
-#        database: str,
-#        username: str,
-#        password: str,
-#        table_names: str | None = None
-#) -> dict[str, Any] | None:
-#    """
-#    获取数据库表结构信息
-#    :param db_type: 数据库类型 (mysql/oracle/sqlserver/postgresql)
-#    :param host: 主机地址
-#    :param port: 端口号
-#    :param database: 数据库名
-#    :param username: 用户名
-#    :param password: 密码
-#    :param table_names: 要查询的表名，以逗号分隔的字符串，如果为None则查询所有表
-#    :return: 包含所有表结构信息的字典
-#    """
-#    result: dict[str, Any] = {}
-#    db_type = 'mssql' if db_type == 'sqlserver' else db_type
-#    # 构建连接URL
-#    driver = {
-#        'mysql': 'pymysql',
-#        'oracle': 'cx_oracle',
-#        'mssql': 'pyodbc',
-#        'postgresql': 'psycopg2'
-#    }.get(db_type.lower(), '')
-#
-#    encoded_username = quote_plus(username)
-#    encoded_password = quote_plus(password)
-#    # separator = ':' if db_type is 'mssql' else ','
-#
-#    engine = create_engine(f'{db_type.lower()}+{driver}://{encoded_username}:{encoded_password}@{host}{separator}{port}/{database}')
-#    inspector = inspect(engine)
-#
-#    # 获取字段注释的SQL语句
-#    column_comment_sql = {
-#        'mysql': f"SELECT COLUMN_COMMENT FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = '{database}' AND TABLE_NAME = :table_name AND COLUMN_NAME = :column_name",
-#        'oracle': "SELECT COMMENTS FROM ALL_COL_COMMENTS WHERE TABLE_NAME = :table_name AND COLUMN_NAME = :column_name",
-#        'mssql': "SELECT CAST(ep.value AS NVARCHAR(MAX)) FROM sys.columns c LEFT JOIN sys.extended_properties ep ON ep.major_id = c.object_id AND ep.minor_id = c.column_id WHERE OBJECT_NAME(c.object_id) = :table_name AND c.name = :column_name",
-#        'postgresql': """
-#            SELECT pg_catalog.col_description(c.oid, cols.ordinal_position::int)
-#            FROM pg_catalog.pg_class c
-#            JOIN information_schema.columns cols
-#            ON c.relname = cols.table_name
-#            WHERE c.relname = :table_name AND cols.column_name = :column_name
-#        """
-#    }.get(db_type.lower(), "")
-#
-#    try:
-#        # 获取所有表名
-#        all_tables = inspector.get_table_names()
-#
-#        # 如果指定了table_names，则过滤表名
-#        target_tables = all_tables
-#
-#        if table_names:
-#            target_tables = [table.strip() for table in table_names.split(',')]
-#            # 过滤出实际存在的表
-#            target_tables = [table for table in target_tables if table in all_tables]
-#        print(f"Retrieving table metadata for {len(target_tables)} tables...")
-#        for table_name in target_tables:
-#            # 获取表注释
-#            table_comment = ""
-#            try:
-#                table_comment = inspector.get_table_comment(table_name).get("text") or ""
-#            except SQLAlchemyError as e:
-#                raise ValueError(f"Failed to retrieve table comments: {str(e)}")
-#
-#            table_info = {
-#                'comment': table_comment,
-#                'columns': []
-#            }
-#
-#            for column in inspector.get_columns(table_name):
-#                # 获取字段注释
-#                column_comment = ""
-#                try:
-#                    with engine.connect() as conn:
-#                        stmt = text(column_comment_sql)
-#                        column_comment = conn.execute(stmt, {
-#                            'table_name': table_name,
-#                            'column_name': column['name']
-#                        }).scalar() or ""
-#                except SQLAlchemyError as e:
-#                    print(f"Warning: failed to get comment for {table_name}.{column['name']} - {e}")
-#                    column_comment = ""
-#
-#                table_info['columns'].append({
-#                    'name': column['name'],
-#                    'comment': column_comment,
-#                    'type': str(column['type'])
-#                })
-#
-#            result[table_name] = table_info
-#        return result
-#    except SQLAlchemyError as e:
-#        raise ValueError(f"Failed to retrieve database table metadata: {str(e)}")
-#    finally:
-#        engine.dispose()
+# 配置日志
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger('db_connection')
+
+# 全局引擎缓存，用于存储和复用数据库连接
+_ENGINE_CACHE: Dict[str, Any] = {}
+# 连接计数器，用于跟踪活跃连接
+_CONNECTION_COUNTERS: Dict[str, int] = {}
+# 引擎创建时间，用于跟踪引擎的生命周期
+_ENGINE_CREATION_TIME: Dict[str, float] = {}
 
 def format_schema_dsl(schema: dict[str, Any], with_type: bool = True, with_comment: bool = False) -> str:
     """
@@ -144,6 +57,135 @@ def format_schema_dsl(schema: dict[str, Any], with_type: bool = True, with_comme
 
     return "\n".join(lines)
 
+def get_engine_key(
+    db_type: str,
+    host: str,
+    port: int,
+    database: str,
+    username: str,
+    schema: Optional[str] = None
+) -> str:
+    """
+    生成用于缓存引擎的唯一键
+    """
+    schema_part = f"/{schema}" if schema else ""
+    return f"{db_type}://{username}@{host}:{port}/{database}{schema_part}"
+
+def get_or_create_engine(
+    db_type: str,
+    host: str,
+    port: int,
+    database: str,
+    username: str,
+    password: str,
+    schema: Optional[str] = None
+) -> Any:
+    """
+    获取或创建数据库引擎实例
+    """
+    # 生成引擎缓存键
+    engine_key = get_engine_key(db_type, host, port, database, username, schema)
+    
+    # 检查缓存中是否已存在引擎实例
+    if engine_key in _ENGINE_CACHE:
+        logger.info(f"复用已有引擎: {engine_key} (创建于 {time.time() - _ENGINE_CREATION_TIME[engine_key]:.2f} 秒前)")
+        return _ENGINE_CACHE[engine_key]
+    
+    # 参数预处理
+    driver = _get_driver(db_type)
+    encoded_username = quote_plus(username)
+    encoded_password = quote_plus(password)
+    connect_args = {}
+    
+    # PostgreSQL 特殊处理
+    if db_type.lower() == 'postgresql' and schema:
+        connect_args['options'] = f"-c search_path={schema}"
+    
+    # 构建连接字符串
+    connection_uri = _build_connection_uri(
+        db_type, driver, encoded_username, encoded_password,
+        host, port, database
+    )
+    
+    # 创建数据库引擎
+    logger.info(f"创建新引擎: {engine_key}")
+    engine = create_engine(
+        connection_uri, 
+        connect_args=connect_args,
+        # 添加连接池配置，便于监控
+        pool_pre_ping=True,  # 在使用连接前检查其有效性
+        pool_recycle=3600,   # 一小时后回收连接
+        echo_pool=True       # 输出连接池事件日志
+    )
+    
+    # 将引擎实例存入缓存
+    _ENGINE_CACHE[engine_key] = engine
+    _CONNECTION_COUNTERS[engine_key] = 0
+    _ENGINE_CREATION_TIME[engine_key] = time.time()
+    
+    # 记录连接池配置信息
+    pool_info = {
+        "size": engine.pool.size(),
+        "checkedin": engine.pool.checkedin(),
+        "overflow": engine.pool.overflow(),
+        "checkedout": engine.pool.checkedout()
+    }
+    logger.info(f"引擎 {engine_key} 连接池初始状态: {pool_info}")
+    
+    return engine
+
+# 添加连接跟踪函数
+def log_connection_status(engine_key: str, action: str):
+    """
+    记录连接状态变化
+    """
+    if engine_key not in _ENGINE_CACHE:
+        return
+    
+    engine = _ENGINE_CACHE[engine_key]
+    pool_info = {
+        "size": engine.pool.size(),
+        "checkedin": engine.pool.checkedin(),
+        "overflow": engine.pool.overflow(),
+        "checkedout": engine.pool.checkedout()
+    }
+    
+    if action == "acquire":
+        _CONNECTION_COUNTERS[engine_key] += 1
+    elif action == "release":
+        _CONNECTION_COUNTERS[engine_key] = max(0, _CONNECTION_COUNTERS[engine_key] - 1)
+    
+    logger.info(f"{action} 连接 - 引擎: {engine_key}, 活跃连接: {_CONNECTION_COUNTERS[engine_key]}, 连接池状态: {pool_info}")
+
+# 在程序退出时清理所有引擎连接
+@atexit.register
+def dispose_all_engines():
+    """
+    在程序退出时关闭所有数据库连接
+    """
+    logger.info(f"程序退出，开始清理 {len(_ENGINE_CACHE)} 个数据库引擎...")
+    
+    for key, engine in _ENGINE_CACHE.items():
+        # 记录引擎使用情况
+        uptime = time.time() - _ENGINE_CREATION_TIME.get(key, time.time())
+        active_connections = _CONNECTION_COUNTERS.get(key, 0)
+        
+        pool_info = {
+            "size": engine.pool.size(),
+            "checkedin": engine.pool.checkedin(),
+            "overflow": engine.pool.overflow(),
+            "checkedout": engine.pool.checkedout()
+        }
+        
+        logger.info(f"释放引擎: {key}, 运行时间: {uptime:.2f}秒, 活跃连接: {active_connections}, 连接池状态: {pool_info}")
+        engine.dispose()
+        logger.info(f"引擎 {key} 已释放")
+    
+    _ENGINE_CACHE.clear()
+    _CONNECTION_COUNTERS.clear()
+    _ENGINE_CREATION_TIME.clear()
+    logger.info("所有数据库引擎已清理完毕")
+
 def execute_sql(
     db_type: str,
     host: str,
@@ -161,43 +203,48 @@ def execute_sql(
     参数新增:
         schema: 指定目标schema（主要用于PostgreSQL）
     """
-
+    start_time = time.time()
     # 参数预处理
     params = params or {}
-    driver = _get_driver(db_type)
-    encoded_username = quote_plus(username)
-    encoded_password = quote_plus(password)
-    connect_args = {}
-    # PostgreSQL 特殊处理
-    if db_type.lower() == 'postgresql' and schema:
-        connect_args['options'] = f"-c search_path={schema}"
-
-    #if db_type.lower() == 'sqlserver':
-    #    import os
-    #    driver_extra_info = 'ODBC+Driver+17+for+SQL+Server' if os.name == 'posix' else 'SQL Server'
-    #    print(driver_extra_info)
-    # 构建连接字符串
-    connection_uri = _build_connection_uri(
-        db_type, driver, encoded_username, encoded_password,
-        host, port, database
+    
+    # 获取引擎键，用于日志记录
+    engine_key = get_engine_key(db_type, host, port, database, username, schema)
+    
+    # 获取或创建数据库引擎
+    engine = get_or_create_engine(
+        db_type, host, port, database, username, password, schema
     )
 
+    # 记录SQL执行开始
+    truncated_sql = sql[:100] + "..." if len(sql) > 100 else sql
+    logger.info(f"开始执行SQL - 引擎: {engine_key}, SQL: {truncated_sql}")
+    
     try:
-        engine = create_engine(connection_uri, connect_args=connect_args)
+        # 记录连接获取
+        log_connection_status(engine_key, "acquire")
+        
         with engine.begin() as conn:
             # 显式设置schema（部分数据库需要）
             if db_type.lower() == 'postgresql' and schema:
                 conn.execute(text(f"SET search_path TO {schema}"))
                 
             result_proxy = conn.execute(text(sql), params)
+            result = _process_result(result_proxy)
             
-            return _process_result(result_proxy)
+            # 记录SQL执行结束
+            execution_time = time.time() - start_time
+            result_size = len(result) if isinstance(result, list) else 1 if result else 0
+            logger.info(f"SQL执行完成 - 引擎: {engine_key}, 耗时: {execution_time:.3f}秒, 结果行数: {result_size}")
+            
+            return result
             
     except SQLAlchemyError as e:
-        raise ValueError(f"数据库操作失败：{str(e)}")
+        error_msg = str(e)
+        logger.error(f"SQL执行失败 - 引擎: {engine_key}, 错误: {error_msg}")
+        raise ValueError(f"数据库操作失败：{error_msg}")
     finally:
-        if 'engine' in locals():
-            engine.dispose()
+        # 记录连接释放
+        log_connection_status(engine_key, "release")
 
 def _get_driver(db_type: str) -> str:
     """获取数据库驱动"""

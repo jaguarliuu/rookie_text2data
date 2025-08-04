@@ -1,5 +1,5 @@
 # 核心依赖
-dify_plugin~=0.0.1b72
+dify_plugin~=0.2.0
 sqlalchemy>=2.0.0
 
 # 数据库驱动
