@@ -1,0 +1,82 @@
+{# prompt_templates/sql_generation/gaussdb_prompt.jinja #}
+{% extends "base_prompt.jinja" %}
+
+{% block optimization_rules %}
+## GaussDB 优化原则：
+1. **索引策略**
+   - 对 WHERE 条件高频字段创建 B-Tree 索引
+   - 对 JSONB 数据使用 GIN 索引，范围查询使用 BRIN 索引
+   - 使用 `INCLUDE` 子句创建覆盖索引（与 PostgreSQL 兼容）：
+     ```sql
+     CREATE INDEX idx_orders_status ON orders (status) INCLUDE (created_at, amount)
+     ```
+
+2. **查询优化**
+   - 优先使用 CTE (WITH 子句) 分解复杂查询
+   - 对分区表确保查询条件匹配分区键
+   - 使用 `FETCH FIRST n ROWS ONLY` 替代 `LIMIT`（符合 SQL 标准）
+   - 利用 GaussDB 的列存储特性，对大宽表使用列存储引擎
+
+3. **性能验证**
+   - 使用 `EXPLAIN PERFORMANCE` 生成详细执行计划（GaussDB 特有）
+   - 确保执行计划显示 `Index Scan` 或 `Bitmap Index Scan`
+   - 关注执行计划中的 `actual time` 和 `rows` 数据
+
+4. **数据类型规范**
+   - 对时间字段使用 `CURRENT_DATE` 替代 `NOW()`
+   - JSONB 字段使用 `->>` 运算符提取文本值
+   - 数组字段使用 `ANY()` 进行高效查询
+   - 支持 Oracle 兼容的数据类型（如 VARCHAR2, NUMBER, CLOB）
+
+5. **GaussDB 特有特性**
+   - 支持 Oracle 兼容模式和 PostgreSQL 兼容模式
+   - 可使用 `ROWNUM` （Oracle 兼容）或 `LIMIT`（PostgreSQL 兼容）
+   - 支持列存储表和行存储表，根据场景选择
+{% endblock %}
+
+{% block validation_rules %}
+## 验证机制：
+1. **元数据验证**
+   ```sql
+   -- 表存在性检查
+   SELECT EXISTS (SELECT 1 FROM pg_class WHERE relname = 'your_table');
+
+   -- 字段存在性检查
+   SELECT EXISTS (
+     SELECT 1 FROM pg_attribute
+     WHERE attrelid = 'your_table'::regclass
+     AND attname = 'your_column'
+   );
+   ```
+
+2. **执行计划验证**
+   ```sql
+   EXPLAIN PERFORMANCE
+   SELECT ... -- 生成的查询语句
+   ```
+
+3. **安全规范**
+   - 禁止使用 SELECT *，必须显式指定字段
+   - 所有字符串比较使用参数化值（如 status = :status）
+   - 结果集必须包含 FETCH FIRST {{ limit }} ROWS ONLY 限制
+   - 严格验证所有表名和字段名均在提供的元数据中
+{% endblock %}
+
+{% block example_section %}
+输出示例：
+SELECT
+  ro."order_id" AS "订单编号",
+  c."name" AS "客户名称",
+  ro.tax_included_amount AS "含税金额",
+  ro.formatted_date AS "订单日期"
+FROM
+  recent_orders ro
+INNER JOIN
+  "customers" c ON ro."customer_id" = c."id"
+WHERE
+  c."region" = 'Asia'
+  AND c."active" = TRUE
+ORDER BY
+  ro."created_at" DESC
+FETCH FIRST {{ limit }} ROWS ONLY;
+{% endblock %}

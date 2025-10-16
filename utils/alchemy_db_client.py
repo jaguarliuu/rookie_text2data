@@ -100,7 +100,14 @@ def get_or_create_engine(
     # PostgreSQL 特殊处理
     if db_type.lower() == 'postgresql' and schema:
         connect_args['options'] = f"-c search_path={schema}"
-    
+
+    # GaussDB 特殊处理 - 添加连接参数解决 SASL 认证问题
+    if db_type.lower() == 'gaussdb':
+        connect_args['gssencmode'] = 'disable'  # 禁用 GSS 加密
+        connect_args['sslmode'] = 'disable'     # 禁用 SSL
+        if schema:
+            connect_args['options'] = f"-c search_path={schema}"
+
     # 构建连接字符串
     connection_uri = _build_connection_uri(
         db_type, driver, encoded_username, encoded_password,
@@ -225,9 +232,12 @@ def execute_sql(
         
         with engine.begin() as conn:
             # 显式设置schema（部分数据库需要）
-            if db_type.lower() == 'postgresql' and schema:
+            if db_type.lower() in ('postgresql', 'gaussdb') and schema:
                 conn.execute(text(f"SET search_path TO {schema}"))
-                
+            elif db_type.lower() in ('oracle', 'dm') and schema:
+                # Oracle 和达梦数据库使用 ALTER SESSION 设置当前 schema
+                conn.execute(text(f"ALTER SESSION SET CURRENT_SCHEMA = {schema}"))
+
             result_proxy = conn.execute(text(sql), params)
             result = _process_result(result_proxy)
             
@@ -250,9 +260,11 @@ def _get_driver(db_type: str) -> str:
     """获取数据库驱动"""
     drivers = {
         'mysql': 'pymysql',
-        'oracle': 'cx_oracle',
+        'oracle': 'oracledb',  # 使用新的 python-oracledb 驱动
         'sqlserver': 'pymssql',
-        'postgresql': 'psycopg2'
+        'postgresql': 'psycopg2',
+        'gaussdb': 'psycopg2',  # GaussDB 使用 psycopg2 驱动
+        'dm': 'dmPython'  # 达梦数据库使用 dmPython 驱动
     }
     return drivers.get(db_type.lower(), '')
 
@@ -267,7 +279,13 @@ def _build_connection_uri(
 ) -> str:
     """构建数据库连接字符串"""
 
-    db_type = db_type if db_type != 'sqlserver' else 'mssql'
+    # 处理特殊数据库类型
+    if db_type == 'sqlserver':
+        db_type = 'mssql'
+    elif db_type == 'gaussdb':
+        # GaussDB 使用 postgresql 协议
+        db_type = 'postgresql'
+
     return f"{db_type}+{driver}://{username}:{password}@{host}:{port}/{database}"
 
 

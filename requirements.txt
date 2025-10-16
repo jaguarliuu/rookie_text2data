@@ -5,10 +5,12 @@ sqlalchemy>=2.0.0
 # 数据库驱动
 pyodbc>=4.0.39       # SQL Server新驱动
 pymysql>=1.1.1       # MySQL驱动
-psycopg2-binary>=2.9.10  # PostgreSQL驱动
+psycopg2-binary>=2.9.10  # PostgreSQL驱动 (也用于GaussDB)
+oracledb>=2.0.0      # Oracle驱动 (推荐使用 python-oracledb，替代 cx_Oracle)
+dmPython>=2.3.0      # 达梦数据库驱动
 
 # 安全相关
-cryptography==42.0.8
+cryptography>=41.0.0,<43.0.0  # 使用范围版本以提高平台兼容性
 
 # 已弃用的驱动 (可选保留)
 pymssql>=2.2.7     # 旧版SQL Server驱动(新代码不再使用)

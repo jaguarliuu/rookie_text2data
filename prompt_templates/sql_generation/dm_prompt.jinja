@@ -1,0 +1,83 @@
+{# prompt_templates/sql_generation/dm_prompt.jinja #}
+{% extends "base_prompt.jinja" %}
+
+{% block optimization_rules %}
+## 达梦数据库（DM）优化原则：
+1. **索引策略**
+   - 对高频查询字段创建 B-Tree 索引
+   - 复合索引遵循最左前缀原则
+   - 使用 `CREATE INDEX` 语句创建索引：
+     ```sql
+     CREATE INDEX idx_table_column ON table_name (column_name);
+     ```
+
+2. **查询优化**
+   - 使用 `ROWNUM` 进行分页（类似 Oracle）
+   - 优先使用 EXISTS 替代 IN 子查询
+   - 避免在 WHERE 子句中对字段进行函数操作
+   - 使用 CTE (WITH 子句) 优化复杂查询
+
+3. **性能验证**
+   - 使用 `EXPLAIN` 查看执行计划
+   - 确保索引被正确使用
+   - 关注全表扫描（TABLE ACCESS FULL）
+
+4. **数据类型规范**
+   - 字符串类型优先使用 `VARCHAR2` 或 `VARCHAR`
+   - 数值类型根据精度需求选择 `NUMBER`, `INTEGER`, `BIGINT`
+   - 日期时间类型使用 `DATE`, `TIMESTAMP`, `DATETIME`
+   - 大对象使用 `CLOB`（文本）或 `BLOB`（二进制）
+
+5. **达梦特有特性**
+   - 部分兼容 Oracle 语法和函数
+   - 支持 Schema 概念，表名和列名默认大写
+   - 支持序列（SEQUENCE）和触发器
+   - 默认端口：5236
+{% endblock %}
+
+{% block validation_rules %}
+## 验证机制：
+1. **元数据验证**
+   ```sql
+   -- 表存在性检查
+   SELECT COUNT(*) FROM ALL_TABLES
+   WHERE OWNER = 'YOUR_SCHEMA' AND TABLE_NAME = 'YOUR_TABLE';
+
+   -- 字段存在性检查
+   SELECT COUNT(*) FROM ALL_TAB_COLUMNS
+   WHERE OWNER = 'YOUR_SCHEMA'
+     AND TABLE_NAME = 'YOUR_TABLE'
+     AND COLUMN_NAME = 'YOUR_COLUMN';
+   ```
+
+2. **执行计划验证**
+   ```sql
+   EXPLAIN
+   SELECT ... -- 生成的查询语句
+   ```
+
+3. **安全规范**
+   - 禁止使用 SELECT *，必须显式指定字段
+   - 所有字符串比较使用参数化值
+   - 结果集必须使用 ROWNUM 限制行数（例如：WHERE ROWNUM <= {{ limit }}）
+   - 严格验证所有表名和字段名均在提供的元数据中
+{% endblock %}
+
+{% block example_section %}
+输出示例：
+SELECT
+  o.ORDER_ID AS "订单编号",
+  c.NAME AS "客户名称",
+  o.AMOUNT AS "订单金额",
+  o.ORDER_DATE AS "订单日期"
+FROM
+  ORDERS o
+INNER JOIN
+  CUSTOMERS c ON o.CUSTOMER_ID = c.ID
+WHERE
+  c.REGION = 'Asia'
+  AND c.ACTIVE = 1
+  AND ROWNUM <= {{ limit }}
+ORDER BY
+  o.ORDER_DATE DESC;
+{% endblock %}

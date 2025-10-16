@@ -3,7 +3,9 @@ from database_schema.inspectors import (
     MySQLInspector,
     SQLServerInspector,
     PostgreSQLInspector,
-    OracleInspector
+    OracleInspector,
+    GaussDBInspector,
+    DMInspector
 )
 
 class InspectorFactory:
@@ -15,10 +17,12 @@ class InspectorFactory:
             'mysql': MySQLInspector,
             'sqlserver': SQLServerInspector,
             'postgresql': PostgreSQLInspector,
-            'oracle': OracleInspector
+            'oracle': OracleInspector,
+            'gaussdb': GaussDBInspector,
+            'dm': DMInspector
         }
-        
+
         if db_type not in mapping:
             raise ValueError(f"Unsupported database type: {db_type}")
-            
+
         return mapping[db_type](**kwargs)

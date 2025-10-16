@@ -28,16 +28,28 @@ parameters:
     options:
       - label:
           en_US: MySQL
+          zh_Hans: MySQL数据库
         value: mysql
       - label:
           en_US: PostgreSQL
+          zh_Hans: PostgreSQL数据库
         value: postgresql
       - label:
           en_US: SQL Server
+          zh_Hans: SQL Server数据库
         value: sqlserver
       - label:
           en_US: Oracle
+          zh_Hans: Oracle数据库
         value: oracle
+      - label:
+          en_US: GaussDB
+          zh_Hans: 华为高斯数据库
+        value: gaussdb
+      - label:
+          en_US: DM Database
+          zh_Hans: 达梦数据库
+        value: dm
   - name: limit
     type: number
     required: false
@@ -136,7 +148,7 @@ parameters:
     form: llm
     label:
       en_US: Schema name
-      zh_Hans: 数据库Schema PGSQL用户选填，默认为public
+      zh_Hans: 数据库Schema（PGSQL默认为public，Oracle/DM默认为用户名大写）
       pt_BR: Schema name
     human_description:
       en_US: Schema name
