@@ -234,6 +234,9 @@ def execute_sql(
             # 显式设置schema（部分数据库需要）
             if db_type.lower() in ('postgresql', 'gaussdb') and schema:
                 conn.execute(text(f"SET search_path TO {schema}"))
+            elif db_type.lower() in ('oracle', 'dm') and schema:
+                # Oracle 和达梦数据库使用 ALTER SESSION 设置当前 schema
+                conn.execute(text(f"ALTER SESSION SET CURRENT_SCHEMA = {schema}"))
 
             result_proxy = conn.execute(text(sql), params)
             result = _process_result(result_proxy)
@@ -260,7 +263,8 @@ def _get_driver(db_type: str) -> str:
         'oracle': 'oracledb',  # 使用新的 python-oracledb 驱动
         'sqlserver': 'pymssql',
         'postgresql': 'psycopg2',
-        'gaussdb': 'psycopg2'  # GaussDB 使用 psycopg2 驱动
+        'gaussdb': 'psycopg2',  # GaussDB 使用 psycopg2 驱动
+        'dm': 'dmPython'  # 达梦数据库使用 dmPython 驱动
     }
     return drivers.get(db_type.lower(), '')
 

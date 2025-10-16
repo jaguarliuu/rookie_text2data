@@ -4,7 +4,8 @@ from database_schema.inspectors import (
     SQLServerInspector,
     PostgreSQLInspector,
     OracleInspector,
-    GaussDBInspector
+    GaussDBInspector,
+    DMInspector
 )
 
 class InspectorFactory:
@@ -17,7 +18,8 @@ class InspectorFactory:
             'sqlserver': SQLServerInspector,
             'postgresql': PostgreSQLInspector,
             'oracle': OracleInspector,
-            'gaussdb': GaussDBInspector
+            'gaussdb': GaussDBInspector,
+            'dm': DMInspector
         }
 
         if db_type not in mapping:

@@ -4,11 +4,13 @@ from .sqlserver import SQLServerInspector
 from .postgresql import PostgreSQLInspector
 from .oracle import OracleInspector
 from .gaussdb import GaussDBInspector
+from .dm import DMInspector
 
 __all__ = [
     'MySQLInspector',
     'SQLServerInspector',
     'PostgreSQLInspector',
     'OracleInspector',
-    'GaussDBInspector'
+    'GaussDBInspector',
+    'DMInspector'
 ]

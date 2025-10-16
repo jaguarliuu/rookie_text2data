@@ -42,6 +42,10 @@ parameters:
           en_US: GaussDB
           zh_Hans: 华为高斯数据库
         value: gaussdb
+      - label:
+          en_US: DM Database
+          zh_Hans: 达梦数据库
+        value: dm
   - name: host
     type: string
     required: true
@@ -115,7 +119,7 @@ parameters:
     form: llm
     label:
       en_US: Schema name
-      zh_Hans: 数据库Schema PGSQL用户选填，默认为public
+      zh_Hans: 数据库Schema（PGSQL默认为public，Oracle/DM默认为用户名大写）
       pt_BR: Schema name
     human_description:
       en_US: Schema name

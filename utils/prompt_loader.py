@@ -37,7 +37,8 @@ class PromptLoader:
             'oracle': "ROWNUM <= n",
             'sqlserver': "TOP n",
             'postgresql': "FETCH FIRST n ROWS ONLY",
-            'gaussdb': "FETCH FIRST n ROWS ONLY"
+            'gaussdb': "FETCH FIRST n ROWS ONLY",
+            'dm': "ROWNUM <= n"  # 达梦使用类似 Oracle 的 ROWNUM
         }
         return clauses.get(db_type.lower(), "LIMIT 100")
     
@@ -47,7 +48,8 @@ class PromptLoader:
             'oracle': "- 使用索引组织表（IOT）\n- 检查执行计划的COST值",
             'sqlserver': "- 使用INCLUDE索引策略\n- 查看实际执行计划",
             'postgresql': "- 使用INCLUDE索引列\n- 分析EXPLAIN ANALYZE结果",
-            'gaussdb': "- 使用INCLUDE索引列\n- 分析EXPLAIN PERFORMANCE结果\n- 利用列存储特性优化宽表查询"
+            'gaussdb': "- 使用INCLUDE索引列\n- 分析EXPLAIN PERFORMANCE结果\n- 利用列存储特性优化宽表查询",
+            'dm': "- 使用EXPLAIN查看执行计划\n- 避免全表扫描\n- 利用ROWNUM进行分页"
         }
         return rules.get(db_type.lower(), "")
 

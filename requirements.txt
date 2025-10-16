@@ -7,6 +7,7 @@ pyodbc>=4.0.39       # SQL Server新驱动
 pymysql>=1.1.1       # MySQL驱动
 psycopg2-binary>=2.9.10  # PostgreSQL驱动 (也用于GaussDB)
 oracledb>=2.0.0      # Oracle驱动 (推荐使用 python-oracledb，替代 cx_Oracle)
+dmPython>=2.3.0      # 达梦数据库驱动
 
 # 安全相关
 cryptography>=41.0.0,<43.0.0  # 使用范围版本以提高平台兼容性
