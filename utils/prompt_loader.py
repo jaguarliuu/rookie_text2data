@@ -36,7 +36,8 @@ class PromptLoader:
             'mysql': "LIMIT n",
             'oracle': "ROWNUM <= n",
             'sqlserver': "TOP n",
-            'postgresql': "FETCH FIRST n ROWS ONLY"
+            'postgresql': "FETCH FIRST n ROWS ONLY",
+            'gaussdb': "FETCH FIRST n ROWS ONLY"
         }
         return clauses.get(db_type.lower(), "LIMIT 100")
     
@@ -45,7 +46,8 @@ class PromptLoader:
             'mysql': "- 使用覆盖索引（Covering Index）\n- 使用EXPLAIN FORMAT=JSON验证执行计划",
             'oracle': "- 使用索引组织表（IOT）\n- 检查执行计划的COST值",
             'sqlserver': "- 使用INCLUDE索引策略\n- 查看实际执行计划",
-            'postgresql': "- 使用INCLUDE索引列\n- 分析EXPLAIN ANALYZE结果"
+            'postgresql': "- 使用INCLUDE索引列\n- 分析EXPLAIN ANALYZE结果",
+            'gaussdb': "- 使用INCLUDE索引列\n- 分析EXPLAIN PERFORMANCE结果\n- 利用列存储特性优化宽表查询"
         }
         return rules.get(db_type.lower(), "")
 

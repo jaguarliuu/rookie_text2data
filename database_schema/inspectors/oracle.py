@@ -13,9 +13,9 @@ class OracleInspector(BaseInspector):
     
     def build_conn_str(self, host: str, port: int, database: str,
                       username: str, password: str) -> str:
-        # 使用cx_Oracle驱动，支持SID或Service Name[6,8](@ref)
+        # 使用 python-oracledb 驱动（新版本，替代 cx_Oracle），支持SID或Service Name
         return (
-            f"oracle+cx_oracle://{quote_plus(username)}:{quote_plus(password)}"
+            f"oracle+oracledb://{quote_plus(username)}:{quote_plus(password)}"
             f"@{host}:{port}/?service_name={database}"
         )
     

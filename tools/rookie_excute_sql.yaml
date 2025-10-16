@@ -38,6 +38,10 @@ parameters:
       - label:
           en_US: Oracle
         value: oracle
+      - label:
+          en_US: GaussDB
+          zh_Hans: 华为高斯数据库
+        value: gaussdb
   - name: host
     type: string
     required: true

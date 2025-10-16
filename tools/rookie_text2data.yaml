@@ -28,16 +28,24 @@ parameters:
     options:
       - label:
           en_US: MySQL
+          zh_Hans: MySQL数据库
         value: mysql
       - label:
           en_US: PostgreSQL
+          zh_Hans: PostgreSQL数据库
         value: postgresql
       - label:
           en_US: SQL Server
+          zh_Hans: SQL Server数据库
         value: sqlserver
       - label:
           en_US: Oracle
+          zh_Hans: Oracle数据库
         value: oracle
+      - label:
+          en_US: GaussDB
+          zh_Hans: 华为高斯数据库
+        value: gaussdb
   - name: limit
     type: number
     required: false
