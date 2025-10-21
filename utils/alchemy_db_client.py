@@ -6,6 +6,12 @@ import atexit
 import logging
 import time
 
+# 导入 GaussDB 自定义方言以注册到 SQLAlchemy
+try:
+    from .gaussdb_dialect import GaussDBDialect
+except ImportError:
+    pass  # 如果导入失败,使用标准 PostgreSQL 方言
+
 # 配置日志
 logging.basicConfig(
     level=logging.INFO,
@@ -96,17 +102,10 @@ def get_or_create_engine(
     encoded_username = quote_plus(username)
     encoded_password = quote_plus(password)
     connect_args = {}
-    
-    # PostgreSQL 特殊处理
-    if db_type.lower() == 'postgresql' and schema:
-        connect_args['options'] = f"-c search_path={schema}"
 
-    # GaussDB 特殊处理 - 添加连接参数解决 SASL 认证问题
-    if db_type.lower() == 'gaussdb':
-        connect_args['gssencmode'] = 'disable'  # 禁用 GSS 加密
-        connect_args['sslmode'] = 'disable'     # 禁用 SSL
-        if schema:
-            connect_args['options'] = f"-c search_path={schema}"
+    # PostgreSQL 和 GaussDB schema 特殊处理
+    if db_type.lower() in ('postgresql', 'gaussdb') and schema:
+        connect_args['options'] = f"-c search_path={schema}"
 
     # 构建连接字符串
     connection_uri = _build_connection_uri(
@@ -263,8 +262,8 @@ def _get_driver(db_type: str) -> str:
         'oracle': 'oracledb',  # 使用新的 python-oracledb 驱动
         'sqlserver': 'pymssql',
         'postgresql': 'psycopg2',
-        'gaussdb': 'psycopg2',  # GaussDB 使用 psycopg2 驱动
-        'dm': 'dmPython'  # 达梦数据库使用 dmPython 驱动
+        'gaussdb': 'psycopg',  # 仅 GaussDB 使用 psycopg3，避免版本解析问题
+        'dm': 'oracledb'  # 达梦数据库使用 oracledb 驱动（兼容 Oracle 协议）
     }
     return drivers.get(db_type.lower(), '')
 
@@ -283,8 +282,13 @@ def _build_connection_uri(
     if db_type == 'sqlserver':
         db_type = 'mssql'
     elif db_type == 'gaussdb':
-        # GaussDB 使用 postgresql 协议
-        db_type = 'postgresql'
+        # GaussDB 使用自定义方言来处理版本解析问题
+        # 只禁用 SSL，保留 SCRAM-SHA-256 等认证方式的支持
+        return f"gaussdb+{driver}://{username}:{password}@{host}:{port}/{database}?sslmode=disable"
+    elif db_type == 'dm':
+        # 达梦数据库使用 Oracle 驱动（兼容 Oracle 协议）
+        # 格式：oracle+oracledb://user:pass@host:port/?service_name=SYSDBA
+        return f"oracle+{driver}://{username}:{password}@{host}:{port}/?service_name=SYSDBA"
 
     return f"{db_type}+{driver}://{username}:{password}@{host}:{port}/{database}"
 
