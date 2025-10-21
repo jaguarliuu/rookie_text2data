@@ -26,14 +26,15 @@ class DMInspector(BaseInspector):
                      username: str, password: str) -> str:
         """构建达梦数据库连接字符串
 
-        达梦连接格式：dm+dmPython://username:password@host:port/?schema=SCHEMANAME
+        dmPython 不支持 SQLAlchemy 方言，改用 Oracle 兼容模式
+        达梦数据库在协议层面兼容 Oracle，可以使用 oracledb 驱动
         """
         encoded_username = quote_plus(username)
         encoded_password = quote_plus(password)
 
-        # 达梦数据库连接字符串
-        # 注意：达梦的连接方式类似 Oracle
-        return f"dm+dmPython://{encoded_username}:{encoded_password}@{host}:{port}/"
+        # 使用 Oracle 驱动连接达梦数据库（达梦兼容 Oracle 协议）
+        # 格式：oracle+oracledb://user:pass@host:port/?service_name=SYSDBA
+        return f"oracle+oracledb://{encoded_username}:{encoded_password}@{host}:{port}/?service_name=SYSDBA"
 
     def get_table_names(self, inspector: reflection.Inspector) -> list[str]:
         """获取指定 schema 下的所有表名"""
