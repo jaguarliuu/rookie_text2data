@@ -5,10 +5,11 @@ sqlalchemy>=2.0.0
 # 数据库驱动
 pyodbc>=4.0.39       # SQL Server新驱动
 pymysql>=1.1.1       # MySQL驱动
-psycopg2-binary>=2.9.10  # PostgreSQL驱动 (也用于GaussDB，2.9+ 支持 SCRAM-SHA-256)
+psycopg2-binary>=2.9.10  # PostgreSQL驱动 (也用于GaussDB和KingbaseES，2.9+ 支持 SCRAM-SHA-256)
 psycopg[binary]>=3.2.0  # 为 GaussDB 使用 psycopg3 驱动
-oracledb>=2.0.0      # Oracle驱动 (也用于达梦数据库，达梦兼容 Oracle 协议)
-# dmPython>=2.3.0    # 达梦原生驱动（不支持 SQLAlchemy，已改用 oracledb）
+oracledb>=2.0.0      # Oracle驱动
+# dmPython>=2.3.0    # 达梦数据库专用驱动（需要从达梦官方下载安装，源码编译）
+                      # 安装方法: 从达梦数据库安装目录的 drivers/python 目录获取源码，执行 python setup.py install
 
 # 安全相关
 cryptography>=41.0.0,<43.0.0  # 使用范围版本以提高平台兼容性

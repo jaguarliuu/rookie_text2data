@@ -5,6 +5,7 @@ from database_schema.inspectors import (
     PostgreSQLInspector,
     OracleInspector,
     GaussDBInspector,
+    KingbaseESInspector,
     DMInspector
 )
 
@@ -19,6 +20,7 @@ class InspectorFactory:
             'postgresql': PostgreSQLInspector,
             'oracle': OracleInspector,
             'gaussdb': GaussDBInspector,
+            'kingbase': KingbaseESInspector,
             'dm': DMInspector
         }
 

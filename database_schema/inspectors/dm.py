@@ -4,15 +4,22 @@ from sqlalchemy.engine import reflection
 from .base import BaseInspector
 from urllib.parse import quote_plus
 
+# 导入达梦数据库自定义方言以注册到 SQLAlchemy
+try:
+    from utils.dm_dialect import DMDialect
+except ImportError:
+    pass  # 如果导入失败,使用标准方言
+
 class DMInspector(BaseInspector):
     """达梦数据库（DM Database）元数据获取实现
 
     达梦数据库特点：
     1. 国产数据库，部分兼容 Oracle 语法
-    2. 使用 dmPython 驱动
+    2. 使用 dmPython 驱动（专用驱动）
     3. 默认端口：5236
     4. 支持 Schema 概念，类似 Oracle
     5. 表名和列名默认大写
+    6. 需要使用 dm+dmPython 方言连接
     """
 
     def __init__(self, host: str, port: int, database: str,
@@ -26,15 +33,15 @@ class DMInspector(BaseInspector):
                      username: str, password: str) -> str:
         """构建达梦数据库连接字符串
 
-        dmPython 不支持 SQLAlchemy 方言，改用 Oracle 兼容模式
-        达梦数据库在协议层面兼容 Oracle，可以使用 oracledb 驱动
+        达梦数据库使用专用的 dmPython 驱动和 dm 方言
+        连接字符串格式: dm+dmPython://user:password@host:port/schema
         """
         encoded_username = quote_plus(username)
         encoded_password = quote_plus(password)
 
-        # 使用 Oracle 驱动连接达梦数据库（达梦兼容 Oracle 协议）
-        # 格式：oracle+oracledb://user:pass@host:port/?service_name=SYSDBA
-        return f"oracle+oracledb://{encoded_username}:{encoded_password}@{host}:{port}/?service_name=SYSDBA"
+        # 使用达梦专用方言和 dmPython 驱动
+        # database 参数在达梦中表示 schema
+        return f"dm+dmPython://{encoded_username}:{encoded_password}@{host}:{port}/{database}"
 
     def get_table_names(self, inspector: reflection.Inspector) -> list[str]:
         """获取指定 schema 下的所有表名"""

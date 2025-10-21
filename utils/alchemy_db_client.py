@@ -6,11 +6,13 @@ import atexit
 import logging
 import time
 
-# 导入 GaussDB 自定义方言以注册到 SQLAlchemy
+# 导入自定义方言以注册到 SQLAlchemy
 try:
     from .gaussdb_dialect import GaussDBDialect
+    from .kingbase_dialect import KingbaseESDialect
+    from .dm_dialect import DMDialect
 except ImportError:
-    pass  # 如果导入失败,使用标准 PostgreSQL 方言
+    pass  # 如果导入失败,使用标准方言
 
 # 配置日志
 logging.basicConfig(
@@ -103,8 +105,8 @@ def get_or_create_engine(
     encoded_password = quote_plus(password)
     connect_args = {}
 
-    # PostgreSQL 和 GaussDB schema 特殊处理
-    if db_type.lower() in ('postgresql', 'gaussdb') and schema:
+    # PostgreSQL、GaussDB 和 KingbaseES schema 特殊处理
+    if db_type.lower() in ('postgresql', 'gaussdb', 'kingbase') and schema:
         connect_args['options'] = f"-c search_path={schema}"
 
     # 构建连接字符串
@@ -231,7 +233,7 @@ def execute_sql(
         
         with engine.begin() as conn:
             # 显式设置schema（部分数据库需要）
-            if db_type.lower() in ('postgresql', 'gaussdb') and schema:
+            if db_type.lower() in ('postgresql', 'gaussdb', 'kingbase') and schema:
                 conn.execute(text(f"SET search_path TO {schema}"))
             elif db_type.lower() in ('oracle', 'dm') and schema:
                 # Oracle 和达梦数据库使用 ALTER SESSION 设置当前 schema
@@ -263,7 +265,8 @@ def _get_driver(db_type: str) -> str:
         'sqlserver': 'pymssql',
         'postgresql': 'psycopg2',
         'gaussdb': 'psycopg',  # 仅 GaussDB 使用 psycopg3，避免版本解析问题
-        'dm': 'oracledb'  # 达梦数据库使用 oracledb 驱动（兼容 Oracle 协议）
+        'kingbase': 'psycopg2',  # 人大金仓使用 psycopg2 驱动（兼容 PostgreSQL）
+        'dm': 'dmPython'  # 达梦数据库使用专用的 dmPython 驱动
     }
     return drivers.get(db_type.lower(), '')
 
@@ -285,10 +288,15 @@ def _build_connection_uri(
         # GaussDB 使用自定义方言来处理版本解析问题
         # 只禁用 SSL，保留 SCRAM-SHA-256 等认证方式的支持
         return f"gaussdb+{driver}://{username}:{password}@{host}:{port}/{database}?sslmode=disable"
+    elif db_type == 'kingbase':
+        # KingbaseES 使用自定义方言来处理版本解析问题
+        # 人大金仓数据库兼容 PostgreSQL 协议
+        return f"kingbase+{driver}://{username}:{password}@{host}:{port}/{database}"
     elif db_type == 'dm':
-        # 达梦数据库使用 Oracle 驱动（兼容 Oracle 协议）
-        # 格式：oracle+oracledb://user:pass@host:port/?service_name=SYSDBA
-        return f"oracle+{driver}://{username}:{password}@{host}:{port}/?service_name=SYSDBA"
+        # 达梦数据库使用专用的 dmPython 驱动和 dm 方言
+        # 格式：dm+dmPython://user:pass@host:port/schema
+        # database 参数在达梦中表示 schema
+        return f"dm+{driver}://{username}:{password}@{host}:{port}/{database}"
 
     return f"{db_type}+{driver}://{username}:{password}@{host}:{port}/{database}"
 
