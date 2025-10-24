@@ -6,13 +6,22 @@ import atexit
 import logging
 import time
 
-# 导入自定义方言以注册到 SQLAlchemy
+# 导入自定义方言模块，触发方言注册
+# 这些导入是必需的，即使看起来未使用，因为它们会在导入时注册自定义方言
 try:
-    from .gaussdb_dialect import GaussDBDialect
-    from .kingbase_dialect import KingbaseESDialect
-    from .dm_dialect import DMDialect
+    from utils import gaussdb_dialect
 except ImportError:
-    pass  # 如果导入失败,使用标准方言
+    pass
+
+try:
+    from utils import dm_dialect
+except ImportError:
+    pass
+
+try:
+    from utils import kingbase_dialect
+except ImportError:
+    pass
 
 # 配置日志
 logging.basicConfig(
@@ -265,8 +274,8 @@ def _get_driver(db_type: str) -> str:
         'sqlserver': 'pymssql',
         'postgresql': 'psycopg2',
         'gaussdb': 'psycopg',  # 仅 GaussDB 使用 psycopg3，避免版本解析问题
-        'kingbase': 'psycopg2',  # 人大金仓使用 psycopg2 驱动（兼容 PostgreSQL）
-        'dm': 'dmPython'  # 达梦数据库使用专用的 dmPython 驱动
+        'dm': 'oracledb',  # 达梦数据库使用 oracledb 驱动（兼容 Oracle 协议）
+        'kingbase': 'psycopg2'  # 人大金仓使用 psycopg2 驱动（兼容 PostgreSQL 协议）
     }
     return drivers.get(db_type.lower(), '')
 
@@ -285,18 +294,18 @@ def _build_connection_uri(
     if db_type == 'sqlserver':
         db_type = 'mssql'
     elif db_type == 'gaussdb':
-        # GaussDB 使用自定义方言来处理版本解析问题
+        # GaussDB 使用 postgresql 协议
         # 只禁用 SSL，保留 SCRAM-SHA-256 等认证方式的支持
-        return f"gaussdb+{driver}://{username}:{password}@{host}:{port}/{database}?sslmode=disable"
+        db_type = 'postgresql'
+        return f"{db_type}+{driver}://{username}:{password}@{host}:{port}/{database}?sslmode=disable"
     elif db_type == 'kingbase':
-        # KingbaseES 使用自定义方言来处理版本解析问题
-        # 人大金仓数据库兼容 PostgreSQL 协议
-        return f"kingbase+{driver}://{username}:{password}@{host}:{port}/{database}"
+        # KingbaseES 使用自定义方言（兼容 PostgreSQL 协议）
+        # 使用已注册的 kingbase 方言
+        return f"{db_type}+{driver}://{username}:{password}@{host}:{port}/{database}"
     elif db_type == 'dm':
-        # 达梦数据库使用专用的 dmPython 驱动和 dm 方言
-        # 格式：dm+dmPython://user:pass@host:port/schema
-        # database 参数在达梦中表示 schema
-        return f"dm+{driver}://{username}:{password}@{host}:{port}/{database}"
+        # 达梦数据库使用 Oracle 驱动（兼容 Oracle 协议）
+        # 格式：oracle+oracledb://user:pass@host:port/?service_name=SYSDBA
+        return f"oracle+{driver}://{username}:{password}@{host}:{port}/?service_name=SYSDBA"
 
     return f"{db_type}+{driver}://{username}:{password}@{host}:{port}/{database}"
 
